@@ -1,6 +1,7 @@
 const axios = require("axios");
 const Location = require("../models/Location");
 
+// Add favourite pickup location
 const addLocation = async (req, res) => {
   try {
     const { userId, label, address } = req.body;
@@ -29,11 +30,14 @@ const addLocation = async (req, res) => {
   }
 };
 
+// Retrieve user favourite locations
 const getUserLocations = async (req, res) => {
   try {
     const { userId } = req.params;
 
-    const locations = await Location.find({ userId }).sort({ createdAt: -1 });
+    const locations = await Location.find({ userId }).sort({
+      createdAt: -1,
+    });
 
     res.status(200).json({
       message: "Favourite pickup locations retrieved",
@@ -47,6 +51,7 @@ const getUserLocations = async (req, res) => {
   }
 };
 
+// Update favourite location
 const updateLocation = async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -54,8 +59,14 @@ const updateLocation = async (req, res) => {
 
     const location = await Location.findByIdAndUpdate(
       locationId,
-      { label, address },
-      { new: true, runValidators: true }
+      {
+        label,
+        address,
+      },
+      {
+        new: true,
+        runValidators: true,
+      }
     );
 
     if (!location) {
@@ -76,6 +87,7 @@ const updateLocation = async (req, res) => {
   }
 };
 
+// Delete favourite location
 const deleteLocation = async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -99,6 +111,7 @@ const deleteLocation = async (req, res) => {
   }
 };
 
+// Retrieve real weather forecast from external API
 const getWeatherForLocation = async (req, res) => {
   try {
     const { locationId } = req.params;
@@ -111,8 +124,12 @@ const getWeatherForLocation = async (req, res) => {
       });
     }
 
-    // Temporary mock weather response.
-    // Later we will replace this with a real external Weather API call.
+    const response = await axios.get(
+      `http://api.weatherapi.com/v1/current.json?key=${process.env.WEATHER_API_KEY}&q=${location.address}`
+    );
+
+    const weatherData = response.data;
+
     res.status(200).json({
       message: "Weather forecast retrieved successfully",
       location: {
@@ -120,10 +137,10 @@ const getWeatherForLocation = async (req, res) => {
         address: location.address,
       },
       weather: {
-        source: "Mock weather data",
-        condition: "Clear",
-        temperatureCelsius: 22,
-        note: "External Weather API will be connected after CRUD testing.",
+        condition: weatherData.current.condition.text,
+        temperatureCelsius: weatherData.current.temp_c,
+        humidity: weatherData.current.humidity,
+        windKph: weatherData.current.wind_kph,
       },
     });
   } catch (error) {
