@@ -1,0 +1,3 @@
+PORT=5004
+MONGO_URI=your_mongodb_connection_string
+WEATHER_API_KEY=temporary_placeholder
