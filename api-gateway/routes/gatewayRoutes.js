@@ -72,4 +72,14 @@ router.use("/events", async (req, res) => {
   );
 });
 
+// Fare routes
+router.use("/fares", async (req, res) => {
+  await forwardRequest(
+    req,
+    res,
+    process.env.FARE_SERVICE_URL,
+    `/api/fares${req.url}`
+  );
+});
+
 module.exports = router;
