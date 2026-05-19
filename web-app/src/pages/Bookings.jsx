@@ -22,6 +22,7 @@ function Bookings() {
   const [bookings, setBookings] = useState([]);
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
+  const [estimatedFare, setEstimatedFare] = useState(null);
 
   const [formData, setFormData] = useState({
     startingLocation: "",
@@ -50,6 +51,36 @@ function Bookings() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+
+    if (
+      e.target.name === "startingLocation" ||
+      e.target.name === "endingLocation"
+    ) {
+      setEstimatedFare(null);
+    }
+  };
+
+  const estimateFare = async () => {
+    setError("");
+    setSuccess("");
+
+    if (!formData.startingLocation || !formData.endingLocation) {
+      setError("Please enter both starting and ending locations first.");
+      return;
+    }
+
+    try {
+      const response = await api.post("/fares/estimate", {
+        startingLocation: formData.startingLocation,
+        endingLocation: formData.endingLocation,
+      });
+
+      setEstimatedFare(response.data.fare.estimatedFare);
+      setSuccess(`Estimated fare: €${response.data.fare.estimatedFare}`);
+    } catch (error) {
+      console.error(error);
+      setError("Could not estimate fare.");
+    }
   };
 
   const createBooking = async (e) => {
@@ -69,6 +100,15 @@ function Bookings() {
 
       const createdBooking = response.data.booking;
 
+      localStorage.setItem("lastBookingId", createdBooking._id);
+      localStorage.setItem("lastEstimatedFare", estimatedFare || 20);
+      localStorage.setItem("lastCabType", createdBooking.cabType);
+      localStorage.setItem(
+        "lastBookingDateTime",
+        createdBooking.bookingDateTime
+      );
+      localStorage.setItem("lastPassengers", createdBooking.passengers);
+
       await api.post("/events/cab-ready/schedule", {
         userId: user.id,
         bookingId: createdBooking._id,
@@ -77,7 +117,9 @@ function Bookings() {
         cabType: createdBooking.cabType,
       });
 
-      setSuccess("Booking created successfully. Cab ready notification scheduled.");
+      setSuccess(
+        "Booking created successfully. Cab ready notification scheduled."
+      );
 
       setFormData({
         startingLocation: "",
@@ -87,10 +129,15 @@ function Bookings() {
         cabType: "Economic",
       });
 
+      setEstimatedFare(null);
       fetchBookings();
     } catch (error) {
       console.error(error);
-      setError(error.response?.data?.error?.message || error.response?.data?.message || "Booking failed.");
+      setError(
+        error.response?.data?.error?.message ||
+          error.response?.data?.message ||
+          "Booking failed."
+      );
     }
   };
 
@@ -108,36 +155,94 @@ function Bookings() {
             Create Booking
           </Typography>
 
-          {success && <Alert severity="success" sx={{ mb: 2 }}>{success}</Alert>}
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+          {success && (
+            <Alert severity="success" sx={{ mb: 2 }}>
+              {success}
+            </Alert>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              {error}
+            </Alert>
+          )}
 
           <form onSubmit={createBooking}>
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
-                <TextField fullWidth required label="Starting Location" name="startingLocation" value={formData.startingLocation} onChange={handleChange} />
+                <TextField
+                  fullWidth
+                  required
+                  label="Starting Location"
+                  name="startingLocation"
+                  value={formData.startingLocation}
+                  onChange={handleChange}
+                />
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField fullWidth required label="Ending Location" name="endingLocation" value={formData.endingLocation} onChange={handleChange} />
+                <TextField
+                  fullWidth
+                  required
+                  label="Ending Location"
+                  name="endingLocation"
+                  value={formData.endingLocation}
+                  onChange={handleChange}
+                />
               </Grid>
 
               <Grid item xs={12} md={6}>
-                <TextField fullWidth required type="datetime-local" name="bookingDateTime" value={formData.bookingDateTime} onChange={handleChange} />
+                <TextField
+                  fullWidth
+                  required
+                  type="datetime-local"
+                  name="bookingDateTime"
+                  value={formData.bookingDateTime}
+                  onChange={handleChange}
+                />
               </Grid>
 
               <Grid item xs={12} md={3}>
-                <TextField fullWidth required type="number" label="Passengers" name="passengers" value={formData.passengers} onChange={handleChange} inputProps={{ min: 1, max: 8 }} />
+                <TextField
+                  fullWidth
+                  required
+                  type="number"
+                  label="Passengers"
+                  name="passengers"
+                  value={formData.passengers}
+                  onChange={handleChange}
+                  inputProps={{ min: 1, max: 8 }}
+                />
               </Grid>
 
               <Grid item xs={12} md={3}>
-                <TextField fullWidth select label="Cab Type" name="cabType" value={formData.cabType} onChange={handleChange}>
+                <TextField
+                  fullWidth
+                  select
+                  label="Cab Type"
+                  name="cabType"
+                  value={formData.cabType}
+                  onChange={handleChange}
+                >
                   <MenuItem value="Economic">Economic</MenuItem>
                   <MenuItem value="Premium">Premium</MenuItem>
                   <MenuItem value="Executive">Executive</MenuItem>
                 </TextField>
               </Grid>
 
+              {estimatedFare && (
+                <Grid item xs={12}>
+                  <Alert severity="info">
+                    Current estimated fare: €{estimatedFare}
+                  </Alert>
+                </Grid>
+              )}
+
               <Grid item xs={12}>
+                <Button variant="outlined" onClick={estimateFare} sx={{ mr: 2 }}>
+                  Estimate Fare
+                </Button>
+
                 <Button type="submit" variant="contained">
                   Create Booking
                 </Button>
@@ -156,7 +261,11 @@ function Bookings() {
               <ListItem key={booking._id} divider>
                 <ListItemText
                   primary={`${booking.startingLocation} → ${booking.endingLocation}`}
-                  secondary={`Cab: ${booking.cabType} | Passengers: ${booking.passengers} | Date: ${new Date(booking.bookingDateTime).toLocaleString()}`}
+                  secondary={`Booking ID: ${booking._id} | Cab: ${
+                    booking.cabType
+                  } | Passengers: ${booking.passengers} | Date: ${new Date(
+                    booking.bookingDateTime
+                  ).toLocaleString()}`}
                 />
               </ListItem>
             ))}
