@@ -1,5 +1,6 @@
 const Notification = require("../models/Notification");
 
+// TASK 5 — Discount notification after 3 completed bookings
 const checkDiscountEligibility = async (req, res) => {
   try {
     const { userId, completedBookingsCount } = req.body;
@@ -51,6 +52,59 @@ const checkDiscountEligibility = async (req, res) => {
   }
 };
 
+// TASK 6 — Cab ready notification after 3 minutes
+const scheduleCabReadyNotification = async (req, res) => {
+  try {
+    const {
+      userId,
+      bookingId,
+      startingLocation,
+      endingLocation,
+      cabType,
+    } = req.body;
+
+    if (
+      !userId ||
+      !bookingId ||
+      !startingLocation ||
+      !endingLocation ||
+      !cabType
+    ) {
+      return res.status(400).json({
+        message: "All cab ready event fields are required",
+      });
+    }
+
+    // Simulate driver search process
+    setTimeout(async () => {
+      try {
+        await Notification.create({
+          userId,
+          type: "CAB_READY",
+          message: `Your ${cabType} cab for booking ${bookingId} is ready for pickup from ${startingLocation} to ${endingLocation}.`,
+        });
+
+        console.log(
+          `Cab ready notification created for booking ${bookingId}`
+        );
+      } catch (error) {
+        console.error("Error creating cab ready notification:", error.message);
+      }
+    }, 180000); // 3 minutes = 180000 ms
+
+    res.status(200).json({
+      message:
+        "Cab ready notification scheduled successfully (3 minute delay)",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Error scheduling cab ready notification",
+      error: error.message,
+    });
+  }
+};
+
 module.exports = {
   checkDiscountEligibility,
+  scheduleCabReadyNotification,
 };
