@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const [weatherResults, setWeatherResults] = useState({});
 const locationSchema = new mongoose.Schema(
   {
     userId: {
