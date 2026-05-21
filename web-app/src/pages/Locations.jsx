@@ -5,12 +5,12 @@ import {
   Paper,
   TextField,
   Button,
-  Grid,
   List,
   ListItem,
   ListItemText,
   Alert,
   Chip,
+  Stack,
 } from "@mui/material";
 
 import Navbar from "../components/Navbar";
@@ -20,6 +20,8 @@ function Locations() {
   const user = JSON.parse(localStorage.getItem("user"));
 
   const [locations, setLocations] = useState([]);
+  const [weatherResults, setWeatherResults] = useState({});
+
   const [success, setSuccess] = useState("");
   const [error, setError] = useState("");
 
@@ -34,7 +36,7 @@ function Locations() {
 
   const fetchLocations = async () => {
     try {
-      const response = await api.get(`/locations/user/${user.id}`);
+      const response = await api.get(`/locations/${user.id}`);
       setLocations(response.data.locations);
     } catch (error) {
       console.error(error);
@@ -49,11 +51,11 @@ function Locations() {
     });
   };
 
-  const createLocation = async (e) => {
+  const addLocation = async (e) => {
     e.preventDefault();
 
-    setSuccess("");
     setError("");
+    setSuccess("");
 
     try {
       await api.post("/locations", {
@@ -62,7 +64,7 @@ function Locations() {
         address: formData.address,
       });
 
-      setSuccess("Favourite location added successfully.");
+      setSuccess("Location added successfully.");
 
       setFormData({
         label: "",
@@ -72,7 +74,29 @@ function Locations() {
       fetchLocations();
     } catch (error) {
       console.error(error);
-      setError("Could not create location.");
+
+      setError(
+        error.response?.data?.message || "Could not add location."
+      );
+    }
+  };
+
+  const getWeather = async (locationId) => {
+    setError("");
+    setSuccess("");
+
+    try {
+      const response = await api.get(
+        `/locations/${locationId}/weather`
+      );
+
+      setWeatherResults({
+        ...weatherResults,
+        [locationId]: response.data.weather,
+      });
+    } catch (error) {
+      console.error(error);
+      setError("Could not load weather for this location.");
     }
   };
 
@@ -102,41 +126,28 @@ function Locations() {
             </Alert>
           )}
 
-          <form onSubmit={createLocation}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Label"
-                  name="label"
-                  value={formData.label}
-                  onChange={handleChange}
-                />
-              </Grid>
+          <form onSubmit={addLocation}>
+            <Stack direction="row" spacing={2}>
+              <TextField
+                required
+                label="Label"
+                name="label"
+                value={formData.label}
+                onChange={handleChange}
+              />
 
-              <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  required
-                  label="Address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                />
-              </Grid>
+              <TextField
+                required
+                label="Address"
+                name="address"
+                value={formData.address}
+                onChange={handleChange}
+              />
 
-              <Grid item xs={12} md={2}>
-                <Button
-                  type="submit"
-                  variant="contained"
-                  fullWidth
-                  sx={{ height: "56px" }}
-                >
-                  Add
-                </Button>
-              </Grid>
-            </Grid>
+              <Button type="submit" variant="contained">
+                Add
+              </Button>
+            </Stack>
           </form>
         </Paper>
 
@@ -150,8 +161,46 @@ function Locations() {
               <ListItem key={location._id} divider>
                 <ListItemText
                   primary={location.label}
-                  secondary={location.address}
+                  secondary={
+                    <>
+                      <div>{location.address}</div>
+
+                      {weatherResults[location._id] && (
+                        <div style={{ marginTop: "8px" }}>
+                          Weather:{" "}
+                          {
+                            weatherResults[location._id]
+                              .condition
+                          }
+                          {" | "}
+                          Temp:{" "}
+                          {
+                            weatherResults[location._id]
+                              .temperatureCelsius
+                          }
+                          °C
+                          {" | "}
+                          Humidity:{" "}
+                          {
+                            weatherResults[location._id]
+                              .humidity
+                          }
+                          %
+                        </div>
+                      )}
+                    </>
+                  }
                 />
+
+                <Button
+                  variant="outlined"
+                  sx={{ mr: 2 }}
+                  onClick={() =>
+                    getWeather(location._id)
+                  }
+                >
+                  Get Weather
+                </Button>
 
                 <Chip
                   label="Favourite"
@@ -162,7 +211,7 @@ function Locations() {
 
             {locations.length === 0 && (
               <ListItem>
-                <ListItemText primary="No favourite locations saved" />
+                <ListItemText primary="No saved locations found." />
               </ListItem>
             )}
           </List>
