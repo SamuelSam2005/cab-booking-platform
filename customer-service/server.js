@@ -24,10 +24,12 @@ mongoose
   .connect(process.env.MONGO_URI)
   .then(() => {
     console.log("Customer Service connected to MongoDB");
-    app.listen(PORT, () => {
+
+    app.listen(PORT, "0.0.0.0", () => {
       console.log(`Customer Service running on port ${PORT}`);
     });
   })
   .catch((error) => {
-    console.error("MongoDB connection error:", error.message);
+    console.error("MongoDB connection error:", error);
+    process.exit(1);
   });
