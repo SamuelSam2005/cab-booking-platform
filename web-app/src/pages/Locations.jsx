@@ -36,7 +36,7 @@ function Locations() {
 
   const fetchLocations = async () => {
     try {
-      const response = await api.get(`/locations/${user.id}`);
+      const response = await api.get(`/locations/user/${user.id}`);
       setLocations(response.data.locations);
     } catch (error) {
       console.error(error);
